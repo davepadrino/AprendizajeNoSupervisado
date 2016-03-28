@@ -1,2 +1,6 @@
-# AprendizajeNoSupervisado
-Tarea #3 del curso Minería de Datos de la Universidad Central de Venezuela
+# Aprendizaje No Supervisado
+## Tarea #3
+
+## David Padrino
+
+
