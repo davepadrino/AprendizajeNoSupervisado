@@ -1,6 +1,6 @@
-install.packages("clue")
+# install.packages("clue")
 library("stringr")
-
+library("caret")
  
 ##### ***** a.csv ***** #####
 
@@ -23,8 +23,9 @@ points(a.kmeans$centers[, c("x", "y")],
        col=1:3,
        pch = 19,
        cex = 2)
+table(a.kmeans$cluster, a$class)
 
-## Partitioning Around Medioids 
+## Partitioning Around Medioids (PAM)
 a.pam <- pam(a[,1:2], 3)
 plot(a$x, a$y, col = a.pam$clustering)
 points(a.pam$medoids,
@@ -39,20 +40,39 @@ a.pam$medoids # Medioids are part of the DataSet
 
 
 ## Hcluster
+hclust_methods <- c("ward.D", "single", "complete", "average", "mcquitty", "median", "centroid", "ward.D2")
+dist_methods <- c("euclidean", "maximum", "manhattan", "canberra", "binary", "minkowski")
+
 a.num <- a # a copy of the dataframe
 a.num$class <-NULL # Delete class column
 a.num <- as.matrix(a.num) # convert into a matri
-a.dist.mat <- dist(a.num) # distance matrix
 
-a.cluster <- hclust(a.dist.mat, method = "single")
+# Calculating each distance method vs each hclust method 
+better.accuracy <- 0
+for (i in 1:length(dist_methods)){
+  for (j in 1:length(hclust_methods)){
+    a.dist.mat <- dist(a.num, method = dist_methods[i]) # distance matrix
+    a.cluster <- hclust(a.dist.mat, method = hclust_methods[j]) # apply method
+    ct <- cutree(a.cluster, k =3) # k to generate 3 clusters
+    confusion.Matrix <- table(as.factor(a$class), as.factor(ct))
+    accuracy.CM <- sum(diag(confusion.Matrix))/sum(confusion.Matrix)
+    if (accuracy.CM > better.accuracy){
+      better.methods <- c(dist_methods[i], hclust_methods[j])
+      better.accuracy <- accuracy.CM
+    }
+  }
+}
+
+
+
 plot(a.cluster) # dendrogram
-ct <- cutree(a.cluster, k =3) # k to generate 3 clusters
-plot(ct)
+plot(a$x, a$y, col= ct)
 
-ct1 <- cutree(a.cluster, h =1) # h para la altura
-plot(a$x, a$y, col = cutree(a.cluster, h =1))
 
-table(ct, a$class)
+ct1 <- cutree(a.cluster, h =15) # h para la altura
+plot(a$x, a$y, col = ct1)
+table(a$class, ct1)
+
 
 dendrogram <- as.dendrogram(a.cluster)
 plot(dendrogram)
@@ -64,7 +84,6 @@ plot(corte)
 
 
 ## Confussion Matrix
-
 
 
 ##### ***** moon.csv ***** #####
@@ -91,6 +110,10 @@ summary(h)
 ## Hcluster
 
 ## Confussion Matrix
+accuracy <- sum(diag(confusionMatrix.PART))/sum(confusionMatrix.PART)
+
+
+
 
 
 ##### ***** s.csv ***** #####
