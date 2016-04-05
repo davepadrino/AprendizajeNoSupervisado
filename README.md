@@ -4,8 +4,7 @@
 ## David Padrino
 
 # Tasks
-## Check "points" in h.csv
-## Try to randomize the points and no clusterize inmediatly
+## start s.csv
 
 
 Se utilizó el SO Ubuntu 14.04.
