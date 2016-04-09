@@ -4,11 +4,12 @@
 ## David Padrino
 
 # Tasks
-## OJO con h, s y guess .csv, seleccionar buen numero de cluster (h: 4; s:2 (casi seguro) guess: 2,4 o 5) revisar hclust en s.csv
-## Jambú says 4 or 5 clusters, there are 3 obviusly...WHAT 2 DO?? in help
+## chequear fotos porque no se imprimen
+## OJO con h, s y guess .csv, seleccionar buen numero de cluster (h: 4(7?); s:2(7?) y guess: 2,4 o 5) revisar hclust en s.csv
+## Jambú says 4 or 5 clusters, there are 3 obviusly...WHAT 2 DO?? in help.csv
 ## Implementar kmedias para a_big
 ## freeze R
-## teoria de kmeans, hcust para explicar 
+## teoria de kmeans, hcust para explicar, hacer una introduccion y explicaciones decentes
 
 
 Se utilizó el SO Ubuntu 14.04.
