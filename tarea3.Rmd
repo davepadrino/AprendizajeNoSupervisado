@@ -7,9 +7,14 @@ runtime: shiny
 output: html_document
 ---
 # Introducción
-Primero que nada se debe establecer el _location directory_ como la bicación actual del archivo.
+Primero que nada se debe establecer el _location directory_ como la ubicación actual del archivo.
 Se instalan e invocan las bibliotecas necesarias, se leen los archivos a medida que se va trabajando con ellos
-```{r setup}  
+
+
+# Puesta a punto
+## 1 - Se cargan las bibliotecas necesarias
+Entre ellas, existen bibliotecas que permiten interactuar con objetos, rotar y mover gráficos en 3D, por ejemplo.
+```{r setup, message=FALSE, warning=FALSE}  
 # install.packages("clue")
 # install.packages("Rcmdr")
 # install.packages("rglwidget")
@@ -23,14 +28,18 @@ library("rglwidget")
 knit_hooks$set(webgl = hook_webgl)
 ```
 
-Se procede a crear 2 arreglos con los metodos necesarios para realizar el clustering jerárquico.
+## 2 - Se procede a crear 2 arreglos con los metodos necesarios para realizar el clustering jerárquico. 
+Se aclara que **para todos los metodos donde se usó clustering jerárquico se utilizó una función personalizada que selecciona la mejor combinación de los métodos tanto de distancia como de clustering expuestos en los arreglos debajo de este párrafo, basado en la tasa de aciertos de su matriz de confusión**
+
+
+
 
 ```{r}
 hclust_methods <- c("ward.D", "single", "complete", "average", "mcquitty", "median", "centroid", "ward.D2")
 dist_methods <- c("euclidean", "maximum", "manhattan", "minkowski")
 ```
 
-Se crearon ciertas funciones por comodidad, como la implementación del codo de jambú, calculo de kmedias para 2D y 3D, comparación de Kmedias y PAM a través de sus matries de confusión, etc.
+## 3 - Se crearon ciertas funciones por comodidad, como la implementación del codo de jambú, calculo de kmedias para 2D y 3D, comparación de Kmedias y PAM a través de sus matries de confusión, etc.
 ```{r, echo=FALSE}
 #Set classes after 1
 set_class = function(dataset){
@@ -114,7 +123,7 @@ match.hclust = function(matrix, k, dataset){
   return(better)
 }
 ```
-
+## ** Comienzo de Actividades**
 ## Archivo *a.csv*
 ```{r}
 ## Exploratory Analysis
@@ -130,6 +139,7 @@ Se observa que la ultima columna efectivamente es de números enteros lo cual si
 names(a)[1] <- "x"
 names(a)[2] <- "y"
 names(a)[3] <- "class"
+a <- set_class(a)
 plot(a$x, a$y, col=1:3) 
 ```
 Al apreciar el gráfico se prueba con 3 centroides.
@@ -227,6 +237,7 @@ Se observa que la ultima columna efectivamente es de números enteros lo cual si
 names(moon)[1] <- "x"
 names(moon)[2] <- "y"
 names(moon)[3] <- "class"
+moon <- set_class(moon)
 plot(moon$x, moon$y, col=1:3) 
 ```
 Al apreciar el gráfico se prueba con 2 centroides.
@@ -317,17 +328,19 @@ moon.final.cluster
 ## Archivo *h.csv*
 ```{r, echo=FALSE}
 h.clase = function(numero){
-  # Selecting 3 clusters
-  if(numero < 6.0)
+  # Selecting 6 clusters
+  if(numero < 7.0)
     return(1)
-  else if(numero < 8.0)
+  else if(numero < 9.0)
     return(2)
-  else if(numero < 10.0)
+  else if(numero < 11.0)
     return(3)
   else if(numero < 12.0)
     return(4)
-  else
+  else if(numero < 13.0)
     return(5)
+  else
+    return(6)
 }
 ```
 
@@ -336,13 +349,11 @@ h.clase = function(numero){
 ## Exploratory Analysis
 h <- read.csv("h.csv")
 #dim(h)
-names(h)
-#str(h)
 summary(h)
 # c.jambu(h)
 ```
 
-Se observa que la ultima columna efectivamente es de números flotantes lo cual no sirve para establecer las clases, se procede a realizar una funcion de asignacion de clases, luego a cambiar los nombres de las columnas y finalmente realizar un gráfico con los colores (nuevas clases asignadas con la funcion) para apreciar mejor la distribucion de los datos
+Se observa que la ultima columna efectivamente es de números flotantes entre 4 y 15, lo cual no sirve para establecer las clases, se procede a realizar una funcion de asignacion de clases, luego a cambiar los nombres de las columnas y finalmente realizar un gráfico con los colores (nuevas clases asignadas con la función de asignación de clases ya pre-establecida) para apreciar mejor la distribucion de los datos
 
 ```{r, testgl0, webgl=TRUE}
 
@@ -360,116 +371,100 @@ plot3d(h$x, h$y, h$z, col = h$class, main="Vista Previa")
 ```
 
 
-Se eligieron 5 clusters por la forma del dataset, a medida que el "espiral" se va "desenrollando" da la impresion que tambien se van separando los puntos del conglomerado inicial
-Además se eligio un numero entero menor y mas cercano al primer cuartil, mismo para el 3er cuartil
+Se eligieron 6 clusters realizando pruebas sucesivas, a medida que el "espiral" se va "desenrollando" da la impresion que tambien se van separando los puntos del conglomerado inicial. Se utilizó ayuda el método "coro de jambú" para ayudar a corroborar que selección de los elementos era cercano a lo esperado.
+Los números seleccionados para limitar la regla de asignación de clases se basaron en los valores del primer y tercer cuartil de manera de que la repartición de puntos fuera equitativa.
 
-Al apreciar el gráfico se prueba con 5 centroides.
-Luego se procede al cálculo de K-medias y PAM respectivamente 
+Luego se procede al cálculo de K-medias y PAM con 5 centros y medioides respectivamente.
 
-Ambos algoritmos se corrieron con 5 centros y medioides respectivamente.
 
-Los resultados de las matrices de confusion se hacen entre PAM y K-medias de forma que el "ganador" se compare con el mejor algoritmo de cluster jerárquico.
-
-```{r, echo=F}
+### K-medias
+```{r, echo=F, testgl1, webgl=TRUE}
 ## K means
-h.kmeans <- k.means3D(dataset = h, centers = 5)
+h.kmeans <- k.means3D(dataset = h, centers = 6)
 h.kmeans.CM <- table(h.kmeans$cluster, h$class)
 h.kmeans.accuracy <- sum(diag(h.kmeans.CM))/sum(h.kmeans.CM)
 
+plot3d(h$x, h$y, h$z, col = h.kmeans$cluster, main = "K-means")
+rgl.spheres(h.kmeans$centers[, c("x", "y", "z")], r = 0.4, color = 1:6) 
+```
+Para K-medias se observa un desempeño bajo teniendo en cuenta que la forma del dataset no es circular (particularmente al ser en 3era dimension esférica o cilíndrica), por lo que tambien su tasa de acierto es bastante baja. Específicamente: 
+```{r, echo=F,} 
+h.kmeans.accuracy 
+```
 
-## Partitioning Around Medioids (PAM)
-h.pam <- pam(h[,1:3], 5)
+
+### Partitioning Around Medioids (PAM)
+```{r, echo=F, testgl2, webgl=TRUE}
+### Partitioning Around Medioids (PAM)
+h.pam <- pam(h[,1:3], 6)
 h.pam.CM <- table(h.pam$clustering, h$class)
 h.pam.accuracy.CM <- sum(diag(h.pam.CM))/sum(h.pam.CM)
 
-#### Comparison of kmean's centroids vs pam's medioids
-h.kmeans.vs.pam <- compare.kmeans.pam(h.kmeans.accuracy, h.pam.accuracy.CM)
-
-# Medioids are part of the DataSet, centroids aren't necessarily
+plot3d(h$x, h$y, h$z, col = h.pam$clustering, main = "PAM")
+rgl.spheres(h.pam$medoids[, c("x", "y", "z")], r = 0.4, color = 1:6) 
 ```
-Luego se realiza el clustering jerárquico. Se utilizaron los arreglos de los métodos para hacer un amtch y asi elegir el mejor de ellos.
+Para PAM se observa que muchas clases toman mas espacio que las otras, los medioides se posicionan en la parte interna del esperial, lo que indica que la mayor densidad de elmentos se encuentra en esta sección de la gráfica. También se aprecia que su tasa de acierto es bastante baja. Específicamente: 
+```{r, echo=F,} 
+h.pam.accuracy.CM 
+```
 
 
-```{r, echo=F}
+### Clustering Jerárquico
+```{r, echo=F, testgl3, webgl=TRUE}
 ## Hcluster
 h.num <- h # a copy of the dataframe
 h.num$class <-NULL # Delete class column
 h.num <- as.matrix(h.num) # convert into a matrix
 
 # Calculating each distance method vs each hclust method 
-h.hclust = match.hclust(h.num, 5, h)
-```
+h.hclust = match.hclust(h.num, 6, h)
 
-Se realiza la comparación y el resultante se muestra a continuación
-```{r,  echo=F,testgl1, webgl=TRUE}
-# Comparison hclust vs kmeans.vs.pam
-if (h.hclust[3] > h.kmeans.vs.pam[2]){
-  h.final.cluster <- h.hclust[3]
-  h.dist.mat <- dist(h.num, method = h.hclust[1]) # distance matrix
-  h.cluster <- hclust(h.dist.mat, method = h.hclust[2]) # apply method
-  h.ct <- cutree(h.cluster, k =5) # k to generate 3 clusters
-  h.dendrogram <- as.dendrogram(h.cluster)
-  plot(h.dendrogram) # dendrogram
-  rect.hclust(h.cluster, k = 5, border = c("cyan"))
-  h.corte <- cut(h.dendrogram, h=205)$upper # $upper to get useful information instead a forest
-  plot(h.corte)
-  #rgl.open()
-  #rgl.bg(color = "white") # Setup the background color
-  plot3d(h$x, h$y, h$z, col = h.ct, main = "HCluster")
-}else{
-  h.final.cluster <- h.kmeans.vs.pam
-  if (h.kmeans.vs.pam[1] == 'pam'){
-    #rgl.open()
-    #rgl.bg(color = "white") # Setup the background color
-    plot3d(h$x, h$y, h$z, col = h.pam$clustering, main = "PAM")
-    rgl.spheres(h.pam$medoids[, c("x", "y", "z")], r = 0.4, color = 1:5) 
-  }else{
-    #rgl.open()
-    #rgl.bg(color = "white") # Setup the background color
-    plot3d(h$x, h$y, h$z, col = h.kmeans$cluster, main = "K-means")
-    rgl.spheres(h.kmeans$centers[, c("x", "y", "z")], r = 0.4, color = 1:5) 
-  }
-}
+h.dist.mat <- dist(h.num, method = h.hclust[1]) # distance matrix
+h.cluster <- hclust(h.dist.mat, method = h.hclust[2]) # apply method
+h.ct <- cutree(h.cluster, k =6) # k to generate 3 clusters
+h.dendrogram <- as.dendrogram(h.cluster)
+plot(h.dendrogram) # dendrogram
+rect.hclust(h.cluster, k = 6, border = c("red"))
+plot3d(h$x, h$y, h$z, col = h.ct, main = "HCluster")
+
+```
+Para HCluster se observa un comportamiento mejor que el ofrecido por PAM o K-Medias, inclusive se puede observar en su dendrograma una estructura bastante limpia. Su tasa de aciertos de acuerdo a su matriz de confusión se muestra a continuación, también se mostrarán los métodos utilizados por Hclust.
+
+Métodos usados
+```{r, echo=F}
+h.hclust[1]
+h.hclust[2]
 
 ```
 
-Con una exactitud de:
-```{r,  echo=F}
-h.final.cluster
+Exactitud:
+```{r, echo=F}
+h.hclust[3]
 ```
+
 
 
 ## Archivo *s.csv*
 ```{r, echo=FALSE}
 s.clase = function(numero){
-  # Selecting 3 clusters
-  if(numero < -2.0)
+  # Selecting 2 clusters
+  if(numero < 0.0)
     return(1)
-  else if(numero < 0.0)
-    return(2)
   else
-    return(3)
+    return(2)
 } 
-
 ```
 
 
 ```{r}
 ## Exploratory Analysis
 s <- read.csv("s.csv")
-dim(s)
-#names(s)
-#str(s)
 summary(s)
-# c.jambu(s)
-
-
-
 ```
 
-Se observa que la ultima columna es de números flotantes lo cual no sirve para establecer las clases, se procede a realizar una funcion de asignacion de clases, luego a cambiar los nombres de las columnas y finalmente realizar un gráfico con los colores (nuevas clases asignadas con la funcion) para apreciar mejor la distribucion de los datos
+Se observa que la ultima columna efectivamente es de números flotantes entre -4.7 y 4.7 aproximadamente, lo cual no sirve para establecer las clases, se procede a realizar una funcion de asignacion de clases, luego a cambiar los nombres de las columnas y finalmente realizar un gráfico con los colores (nuevas clases asignadas con la función de asignación de clases ya pre-establecida) para apreciar mejor la distribucion de los datos
 
-```{r, testgl2, webgl=TRUE}
+```{r, testgl4, webgl=TRUE}
 
 names(s)[1] <- "x"
 names(s)[2] <- "y"
@@ -478,44 +473,52 @@ names(s)[4] <- "class"
 for (i in 1:length(s$class)){
   s$class[i] <- s.clase(s$class[i])
 }
-
-plot3d(s$x, s$y, s$z, col = s$class, main = "Vista Previa")
+plot3d(s$x, s$y, s$z, col = s$class, main = "Vista Previa ")
 
 
 ```
 
 
-Se eligieron 3 clusters por la forma del dataset, a medida que el "espiral" se va "desenrollando" da la impresion que tambien se van separando los puntos del conglomerado inicial
-Además se eligio un numero entero menor y mas cercano al primer cuartil, mismo para el 3er cuartil
+Se eligieron 2 clusters por la forma que presenta el dataset, el cual tuvo que graficarse de cierta forma para poder darle forma similar a una "S". El autor decidió que cada curva de la "S" formara un cluster aparte.
+Los números seleccionados para la regla de asignación de clases fueron elegidos acorde a la distribución de los datos de la última columna (antes de que fuera aplicada la regla), su mínimo es -4.7 aproximadamente, su mediana (y coincidencialmente su media) en valores muy cercanos a 0 y su máximo en 4.7.
 
-Al apreciar el gráfico se prueba con 5 centroides.
-Luego se procede al cálculo de K-medias y PAM respectivamente 
+Luego se procede al cálculo de K-medias y PAM con 5 centros y medioides respectivamente.
 
-Ambos algoritmos se corrieron con 5 centros y medioides respectivamente.
 
-Los resultados de las matrices de confusion se hacen entre PAM y K-medias de forma que el "ganador" se compare con el mejor algoritmo de cluster jerárquico.
-
-```{r, echo=F}
+### K-medias
+```{r, echo=F, testgl5, webgl=TRUE}
 ## K means
-s.kmeans <- k.means3D(dataset = s, centers = 3)
+s.kmeans <- k.means3D(dataset = s, centers = 2)
 s.kmeans.CM <- table(s.kmeans$cluster, s$class)
 s.kmeans.accuracy <- sum(diag(s.kmeans.CM))/sum(s.kmeans.CM)
 
+plot3d(s$x, s$y, s$z, col = s.kmeans$cluster, main = "K-means")
+rgl.spheres(s.kmeans$centers[, c("x", "y", "z")], r = 0.1, color = 1:2) 
+```
+Para K-medias se observa un desempeño altísimo clasificando de manera buena cada punto alrededor de su centroide, lo que coincide con la tasa de acierto de su matriz de confusión que es bastante alta. Específicamente: 
+```{r, echo=F,} 
+s.kmeans.accuracy 
+```
 
-## Partitioning Around Medioids (PAM)
-s.pam <- pam(s[,1:3], 3)
+
+### Partitioning Around Medioids (PAM)
+```{r, echo=F, testgl6, webgl=TRUE}
+### Partitioning Around Medioids (PAM)
+s.pam <- pam(s[,1:3], 2)
 s.pam.CM <- table(s.pam$clustering, s$class)
 s.pam.accuracy.CM <- sum(diag(s.pam.CM))/sum(s.pam.CM)
 
-#### Comparison of kmean's centroids vs pam's medioids
-s.kmeans.vs.pam <- compare.kmeans.pam(s.kmeans.accuracy, s.pam.accuracy.CM)
-
+plot3d(s$x, s$y, s$z, col = s.pam$clustering, main = "PAM")
+rgl.spheres(s.pam$medoids[, c("x", "y", "z")], r = 0.1, color = 1:2) 
+```
+Para PAM se observa que las clases se distribuyen muy parecido a Kmedias alrededor de sus medioides sin embargo se aprecia que su tasa de acierto es bastante baja. Específicamente: 
+```{r, echo=F,} 
+s.pam.accuracy.CM 
 ```
 
-Luego se realiza el clustering jerárquico. Se utilizaron los arreglos de los métodos para hacer un amtch y asi elegir el mejor de ellos.
 
-
-```{r, echo=F}
+### Clustering Jerárquico
+```{r, echo=F, testgl7, webgl=TRUE}
 ## Hcluster
 s.num <- s # a copy of the dataframe
 s.num$class <-NULL # Delete class column
@@ -523,43 +526,28 @@ s.num <- as.matrix(s.num) # convert into a matrix
 
 # Calculating each distance method vs each hclust method 
 s.hclust <- match.hclust(s.num, 2, s)
-```
 
-Se realiza la comparación y el resultante se muestra a continuación
-```{r,  echo=F,testgl3, webgl=TRUE}
-if (s.hclust[3] > s.kmeans.vs.pam[2]){
-  s.final.cluster <- s.hclust[3]
-  s.dist.mat <- dist(s.num, method = s.hclust[1]) # distance matrix
-  s.cluster <- hclust(s.dist.mat, method = s.hclust[2]) # apply method
-  s.ct <- cutree(s.cluster, k =2) # k to generate 4 clusters
-  s.dendrogram <- as.dendrogram(s.cluster.better)
-  plot(s.dendrogram) # dendrogram
-  rect.hclust(s.cluster.better, k = 2, border = c("red"))
-  s.corte <- cut(s.dendrogram, h=0.21)$upper # $upper to get useful information instead a forest
-  plot(s.corte)
-  rgl.open()
-  rgl.bg(color = "white") # Setup the background color
-  plot3d(s$x, s$y, s$z, col = s.ct, main = "HCluster")
-}else{
-  s.final.cluster <- s.kmeans.vs.pam
-  if (s.kmeans.vs.pam[1] == 'pam'){
-    rgl.open()
-    rgl.bg(color = "white") # Setup the background color
-    plot3d(s$x, s$y, s$z, col = s.pam$clustering, main = "PAM")
-    rgl.spheres(s.pam$medoids[, c("x", "y", "z")], r = 0.2, color = 1:3) 
-  }else{
-    rgl.open()
-    rgl.bg(color = "white") # Setup the background color
-    plot3d(s$x, s$y, s$z, col = s.kmeans$cluster, main = "K-means")
-    rgl.spheres(s.kmeans$centers[, c("x", "y", "z")], r = 0.2, color = 1:3) 
-  }
-}
+s.dist.mat <- dist(s.num, method = s.hclust[1]) # distance matrix
+s.cluster <- hclust(s.dist.mat, method = s.hclust[2]) # apply method
+s.ct <- cutree(s.cluster, k =2) # k to generate 4 clusters
+s.dendrogram <- as.dendrogram(s.cluster)
+plot(s.dendrogram) # dendrogram
+rect.hclust(s.cluster, k = 2, border = c("red"))
+plot3d(s$x, s$y, s$z, col = s.ct, main = "HCluster")
+
+```
+Para HCluster se observa un comportamiento muy uniforme sin clusterización y mucho peor que la ofrecido por PAM o K-Medias, inclusive se puede observar en su dendrograma una estructura bastante poco entendible. Su tasa de aciertos de acuerdo a su matriz de confusión (que se muestra a continuación, también se mostrarán los métodos utilizados por Hclust) resulta en uno de los valores mas altos de los algoritmos anteriormente probados, sin embargo, su gráfica no muestra tal comportamiento. Muy mal método de clustering en este caso.
+
+Métodos usados
+```{r, echo=F}
+s.hclust[1]
+s.hclust[2]
 
 ```
 
-Con una exactitud de:
-```{r,  echo=F}
-s.final.cluster
+Exactitud:
+```{r, echo=F}
+s.hclust[3]
 ```
 
 ## Archivo *guess.csv*
@@ -642,6 +630,138 @@ corte <- cut(dendrogram, h=5000)$upper # $upper to get useful information instea
 plot(corte)
 plot(guess$x, guess$y, col= guess.ct, main = "HCluster")
 ```
+
+
+
+## Archivo *help.csv*
+
+```{r}
+help.clase = function(numero){
+  # Selecting 3 clusters
+  if(numero < -1.0)
+    return(1)
+  else if(numero < 2.0)
+    return(2)
+  else
+    return(3)
+} 
+
+```
+
+```{r}
+## Exploratory Analysis
+help <- read.csv("help.csv")
+dim(help)
+#names(help)
+#str(help)
+summary(help)
+
+```
+
+La ultima columna fue convertida en numero entero para darle clase al dataset.
+
+### Se ven 3 clusters en forma de especie de letras. Cada "letra" define un cluster diferente
+```{r, testgl4, webgl=TRUE}
+names(help)[1] <- "x"
+names(help)[2] <- "y"
+names(help)[3] <- "z"
+names(help)[4] <- "class"
+for (i in 1:length(help$class)){
+  help$class[i] <- help.clase(help$class[i])
+}
+plot3d(help$x, help$y, help$z)
+```
+
+### Al aplicar la regla de asignación de clases se divide la última columna en numeros enteros que al final sirven para darles una clase a los cluster. Pero gráficamente estos estan desordenados y no se ven los cluster identificados
+```{r, testgl5, webgl=TRUE}
+summary(help)
+plot3d(help$x, help$y, help$z, col = 1:3)
+```
+
+### La solución ideal para asignar de manera correcta los cluster es a través de algoritmos de clusterización. En los siguientes fragmentos de código se analizará el mejor de los casos.
+
+Se eligieron 3 clusters por la forma del dataset.
+
+Dadas ciertas condiciones _pre-probadas_ se procederá a mostrar el comportamiento de este dataset con los 3 métodos, Kmedias, PAM y Hclust
+
+### Para K-Medias
+
+```{r, echo=F, testgl7, webgl=TRUE}
+## K means
+help.kmeans <- k.means3D(dataset = help, centers = 3)
+help.kmeans.CM <- table(help.kmeans$cluster, help$class)
+help.kmeans.accuracy <- sum(diag(help.kmeans.CM))/sum(help.kmeans.CM)
+plot3d(help$x, help$y, help$z, col = help.kmeans$cluster, main = "K-means")
+rgl.spheres(help.kmeans$centers[, c("x", "y", "z")], r = 0.4, color = 1:3) 
+```
+
+Podemos ver que distribuye excelente cada una de las 3 "letras" con cada color, lo cual al parecer es una buena representación, sin emabrgo, cuando se evalúa la calidad del modelo a través de una matriz de confusión el resultado es el siguiente:
+```{r, echo=F}
+help.kmeans.accuracy
+```
+
+### Para PAM
+```{r, echo=F, testgl8, webgl=TRUE}
+## Partitioning Around Medioids (PAM)
+help.pam <- pam(help[,1:3], 3)
+help.pam.CM <- table(help.pam$clustering, help$class)
+help.pam.accuracy.CM <- sum(diag(help.pam.CM))/sum(help.pam.CM)
+plot3d(help$x, help$y, help$z, col = help.pam$clustering, main = "PAM")
+rgl.spheres(help.pam$medoids[, c("x", "y", "z")], r = 0.2, color = 1:3) 
+```
+
+Tambien se observa que elige cada "letra" como parte de un cluster por separado, su calidad evaluada a través de su matriz de confusión es la siguiente.
+```{r, echo=F}
+help.pam.accuracy.CM
+```
+
+
+### Para Hclust
+
+Se observa que se distribuyen de manera irregular los cluster, sin emabrgo al tener la mejor tasa de aciertos de las variaciones de cluster jerárquico no implica que su distribución sea la mas adecuada.
+
+La gráfica a continuación de su dedrograma y la agrupación de sus 3 cluster
+```{r}
+## Hcluster
+help.num <- help # a copy of the dataframe
+help.num$class <-NULL # Delete class column
+help.num <- as.matrix(help.num) # convert into a matrix
+help.hclust = match.hclust(help.num, 3, help)
+help.dist.mat <- dist(help.num, method = help.hclust[1]) # distance matrix
+help.cluster <- hclust(help.dist.mat, method = help.hclust[2]) # apply method
+help.ct <- cutree(help.cluster, k =3) # k to generate 3 clusters
+help.dendrogram <- as.dendrogram(help.cluster)
+plot(help.dendrogram) # dendrogram
+rect.hclust(help.cluster, k = 3, border = c("red"))
+corte <- cut(help.dendrogram, h=18.5)$upper # $upper to get useful information instead a forest
+plot(corte)
+
+```
+La gráfica es la siguiente:
+
+```{r, echo=F, testgl9, webgl=TRUE}
+plot3d(help$x, help$y, help$z, col = help.ct, main = "HCluster")
+
+```
+
+En donde los métodos seleccionados para la matriz de distancia fue
+```{r,  echo=F}
+help.hclust[1]
+```
+
+y para el método del clustering jerárquico:
+```{r,  echo=F}
+help.hclust[2]
+```
+
+Con una exactitud de:
+```{r,  echo=F}
+help.hclust[3]
+```
+
+
+Como se puede ver, no siempre los cluster _mejor divididos_ son hechos con una buena calidad a través de una matriz de confusión.
+
 
 
 

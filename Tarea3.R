@@ -106,9 +106,7 @@ names(a)[3] <- "class"
 a <- set_class(a)
 # dim(a)
 # names(a)
-# str(a)
 # summary(a)
-# hist(a$x)
 # plot(a$x, a$y, col=1:3) 
 
 ## K means
@@ -338,29 +336,21 @@ if (moon.hclust[3] > moon.kmeans.vs.pam[2]){
 
 ############################### ***** h.csv ***** ###############################
 h.clase = function(numero){
-  # Selecting 3 clusters
+  # Selecting 6 clusters
   if(numero < 7.0)
     return(1)
+  else if(numero < 9.0)
+    return(2)
   else if(numero < 11.0)
-    return(2)
-  else
-    return(3)
-}
-
-h.clase = function(numero){
-  # Selecting 5 clusters
-  if(numero < 6.0)
-    return(1)
-  else if(numero < 8.0)
-    return(2)
-  else if(numero < 10.0)
     return(3)
   else if(numero < 12.0)
     return(4)
-  else
+  else if(numero < 13.0)
     return(5)
+  else
+    return(6)
 }
-# se eligieron 5 clusters por la forma del dataset, a medida que el "espiral" se va "desenrollando" da la impresion que tambien se van separando los puntos del conglomerado inicial
+# se eligieron 6 clusters por la forma del dataset, a medida que el "espiral" se va "desenrollando" da la impresion que tambien se van separando los puntos del conglomerado inicial
 # ademas se eligio un numero entero menor y mas cercano al primer cuartil, mismo para el 3er cuartil
 
 
@@ -377,39 +367,32 @@ for (i in 1:length(h$class)){
 #names(h)
 #str(h)
 summary(h)
-# c.jambu(h)
 plot3d(h$x, h$y, h$z, col = h$class)
 
 
 
 ## K means ############################
 
-h.kmeans <- k.means3D(dataset = h, centers = 5)
+h.kmeans <- k.means3D(dataset = h, centers = 6)
 h.kmeans.CM <- table(h.kmeans$cluster, h$class)
 h.kmeans.accuracy <- sum(diag(h.kmeans.CM))/sum(h.kmeans.CM)
 
 
 ### ***** plot kmeans 
-rgl.open()
-rgl.bg(color = "white") # Setup the background color
 plot3d(h$x, h$y, h$z, col = h.kmeans$cluster, main = "K-means")
-rgl.spheres(h.kmeans$centers[, c("x", "y", "z")], r = 0.4, color = 1:5) 
-rgl.close()
+rgl.spheres(h.kmeans$centers[, c("x", "y", "z")], r = 0.4, color = 1:6) 
 ###
 
 
 
 ## Partitioning Around Medioids (PAM)
-h.pam <- pam(h[,1:3], 5)
+h.pam <- pam(h[,1:3], 6)
 h.pam.CM <- table(h.pam$clustering, h$class)
 h.pam.accuracy.CM <- sum(diag(h.pam.CM))/sum(h.pam.CM)
 
 ### ***** plot PAM
-rgl.open()
-rgl.bg(color = "white") # Setup the background color
 plot3d(h$x, h$y, h$z, col = h.pam$clustering, main = "PAM")
-rgl.spheres(h.pam$medoids[, c("x", "y", "z")], r = 0.4, color = 1:5) 
-rgl.close()
+rgl.spheres(h.pam$medoids[, c("x", "y", "z")], r = 0.4, color = 1:6) 
 ###
 
 
@@ -424,67 +407,50 @@ h.num$class <-NULL # Delete class column
 h.num <- as.matrix(h.num) # convert into a matrix
 
 # Calculating each distance method vs each hclust method 
-h.hclust = match.hclust(h.num, 5, h)
-
-
-h.hclust.better.accuracy <- 0
-for (i in 1:length(dist_methods)){
-  for (j in 1:length(hclust_methods)){
-    h.dist.mat <- dist(h.num, method = dist_methods[i]) # distance matrix
-    h.cluster <- hclust(h.dist.mat, method = hclust_methods[j]) # apply method
-    h.ct <- cutree(h.cluster, k =5) # k to generate 3 clusters
-    h.hclust.CM <- table(as.factor(h$class), as.factor(h.ct))
-    h.hclust.accuracy.CM <- sum(diag(h.hclust.CM))/sum(h.hclust.CM)
-    if (h.hclust.accuracy.CM > h.hclust.better.accuracy){
-      h.better <- c(dist_methods[i], hclust_methods[j])
-      h.cluster.better <- h.cluster ##
-      h.ct.better <- h.ct ##
-      h.hclust.better.accuracy <- h.hclust.accuracy.CM
-    }
-  }
-}
+h.hclust = match.hclust(h.num, 6, h)
 
 #### ****** plot HCLUST
-h.dendrogram <- as.dendrogram(h.cluster.better)
+h.dist.mat <- dist(h.num, method = h.hclust[1]) # distance matrix
+h.cluster <- hclust(h.dist.mat, method = h.hclust[2]) # apply method
+h.ct <- cutree(h.cluster, k =6) # k to generate 3 clusters
+h.dendrogram <- as.dendrogram(h.cluster)
 plot(h.dendrogram) # dendrogram
-rect.hclust(h.cluster.better, k = 5, border = c("red"))
-corte <- cut(h.dendrogram, h=205)$upper # $upper to get useful information instead a forest
-plot(corte)
-rgl.open()
-rgl.bg(color = "white") # Setup the background color
-plot3d(h$x, h$y, h$z, col = h.ct.better, main = "HCluster")
-rgl.close()
+rect.hclust(h.cluster, k = 5, border = c("red"))
+plot3d(h$x, h$y, h$z, col = h.ct, main = "HCluster")
 ######
 
 
 # Comparison hclust vs kmeans.vs.pam
 if (h.hclust[3] > h.kmeans.vs.pam[2]){
-  h.final.cluster <- h.hclust.better.accuracy
+  h.final.cluster <- c(h.hclust[3], "HCluster")
   h.dist.mat <- dist(h.num, method = h.hclust[1]) # distance matrix
   h.cluster <- hclust(h.dist.mat, method = h.hclust[2]) # apply method
   h.ct <- cutree(h.cluster, k =5) # k to generate 3 clusters
-  h.dendrogram <- as.dendrogram(h.cluster.better)
+  h.dendrogram <- as.dendrogram(h.cluster)
   plot(h.dendrogram) # dendrogram
-  rect.hclust(h.cluster.better, k = 5, border = c("cyan"))
-  h.corte <- cut(h.dendrogram, h=16)$upper # $upper to get useful information instead a forest
-  plot(h.corte)
-  rgl.open()
-  rgl.bg(color = "white") # Setup the background color
+  rect.hclust(h.cluster, k = 5, border = c("red"))
   plot3d(h$x, h$y, h$z, col = h.ct, main = "HCluster")
 }else{
-  h.final.cluster <- h.kmeans.vs.pam
+  h.final.cluster <- c(h.kmeans.vs.pam, "HClust")
   if (h.kmeans.vs.pam[1] == 'pam'){
-    rgl.open()
-    rgl.bg(color = "white") # Setup the background color
+    h.final.cluster <- c(h.kmeans.vs.pam, "PAM")
     plot3d(h$x, h$y, h$z, col = h.pam$clustering, main = "PAM")
     rgl.spheres(h.pam$medoids[, c("x", "y", "z")], r = 0.4, color = 1:5) 
   }else{
-    rgl.open()
-    rgl.bg(color = "white") # Setup the background color
+    h.final.cluster <- c(h.kmeans.vs.pam, "Kmedias")
     plot3d(h$x, h$y, h$z, col = h.kmeans$cluster, main = "K-means")
     rgl.spheres(h.kmeans$centers[, c("x", "y", "z")], r = 0.4, color = 1:5) 
   }
 }
+
+if (h.final.cluster[2] == "HCluster"){
+  h.hclust[1] # Distancia
+  h.hclust[2] # Método de Hclust
+  h.hclust[3] #Efectividad
+}else{
+  h.final.cluster[1]
+}
+
 
 ################################### END h.csv ##############################################
 
@@ -500,62 +466,33 @@ s.clase = function(numero){
 } 
 
 
-
-s.clase = function(numero){
-  # Selecting 3 clusters
-  if(numero < -2.0)
-    return(1)
-  else if(numero < 0.0)
-    return(2)
-  else
-    return(3)
-} 
-
-
 ## Exploratory Analysis
 s <- read.csv("s.csv")
+# c.jambu(s)
+# summary(s)
 names(s)[1] <- "x"
 names(s)[2] <- "y"
 names(s)[3] <- "z"
 names(s)[4] <- "class"
 plot3d(s$x, s$y, s$z)
-
 for (i in 1:length(s$class)){
   s$class[i] <- s.clase(s$class[i])
 }
 #dim(s)
 #names(s)
 #str(s)
-#summary(s)
-# c.jambu(s)
 plot3d(s$x, s$y, s$z, col = s$class)
 
 ## K means
-s.kmeans <- k.means3D(dataset = s, centers = 3)
+s.kmeans <- k.means3D(dataset = s, centers = 2)
 s.kmeans.CM <- table(s.kmeans$cluster, s$class)
 s.kmeans.accuracy <- sum(diag(s.kmeans.CM))/sum(s.kmeans.CM)
 
-s.kmeans.accuracy.CM <- 0
-s.kmeans.better.accuracy.CM <- 0
-for (i in 1:10){
-  s.kmeans <- kmeans(s[,c("x", "y", "z")], centers = 2)
-  s.kmeans.CM <- table(s.kmeans$cluster, s$class)
-  # comparing and choosing the best kmeans
-  s.kmeans.accuracy.CM <- sum(diag(s.kmeans.CM))/sum(s.kmeans.CM)
-  if (s.kmeans.accuracy.CM > s.kmeans.better.accuracy.CM){
-    s.kmeans.better <- s.kmeans
-    s.kmeans.better.accuracy.CM <- s.kmeans.accuracy.CM
-  }
-}
-s.kmeans <- s.kmeans.better
-s.kmeans.accuracy.CM <- s.kmeans.better.accuracy.CM
+
 
 ### ***** plot kmeans 
-rgl.open()
-rgl.bg(color = "white") # Setup the background color
 plot3d(s$x, s$y, s$z, col = s.kmeans$cluster, main = "K-means")
-rgl.spheres(s.kmeans$centers[, c("x", "y", "z")], r = 0.1, color = 1:3) 
-rgl.close()
+rgl.spheres(s.kmeans$centers[, c("x", "y", "z")], r = 0.1, color = 1:2) 
 ###
 
 
@@ -566,11 +503,8 @@ s.pam.CM <- table(s.pam$clustering, s$class)
 s.pam.accuracy.CM <- sum(diag(s.pam.CM))/sum(s.pam.CM)
 
 ### ***** plot PAM
-rgl.open()
-rgl.bg(color = "white") # Setup the background color
 plot3d(s$x, s$y, s$z, col = s.pam$clustering, main = "PAM")
 rgl.spheres(s.pam$medoids[, c("x", "y", "z")], r = 0.1, color = 1:2) 
-rgl.close()
 ###
 
 
@@ -590,33 +524,15 @@ s.hclust <- match.hclust(s.num, 2, s)
   
 
 ####################################################################
-s.hclust.better.accuracy <- 0
-for (i in 1:length(dist_methods)){
-  for (j in 1:length(hclust_methods)){
-    s.dist.mat <- dist(s.num, method = dist_methods[i]) # distance matrix
-    s.cluster <- hclust(s.dist.mat, method = hclust_methods[j]) # apply method
-    s.ct <- cutree(s.cluster, k =2) # k to generate 4 clusters
-    s.hclust.CM <- table(as.factor(s$class), as.factor(s.ct))
-    s.hclust.accuracy.CM <- sum(diag(s.hclust.CM))/sum(s.hclust.CM)
-    if (s.hclust.accuracy.CM > s.hclust.better.accuracy){
-      s.better <- c(dist_methods[i], hclust_methods[j])
-      s.cluster.better <- s.cluster ##
-      s.ct.better <- s.ct ##
-      s.hclust.better.accuracy <- s.hclust.accuracy.CM
-    }
-  }
-}
 
 #### ****** plot HCLUST
-s.dendrogram <- as.dendrogram(s.cluster.better)
+s.dist.mat <- dist(s.num, method = s.hclust[1]) # distance matrix
+s.cluster <- hclust(s.dist.mat, method = s.hclust[2]) # apply method
+s.ct <- cutree(s.cluster, k =2) # k to generate 4 clusters
+s.dendrogram <- as.dendrogram(s.cluster)
 plot(s.dendrogram) # dendrogram
-rect.hclust(s.cluster.better, k = 2, border = c("red"))
-s.corte <- cut(s.dendrogram, h=0.25)$upper # $upper to get useful information instead a forest
-plot(s.corte)
-rgl.open()
-rgl.bg(color = "white") # Setup the background color
-plot3d(s$x, s$y, s$z, col = s.ct.better, main = "HCluster")
-rgl.close()
+rect.hclust(s.cluster, k = 2, border = c("red"))
+plot3d(s$x, s$y, s$z, col = s.ct, main = "HCluster")
 #######################################################################################
 
 
@@ -731,27 +647,12 @@ plot(guess$x, guess$y, col= guess.ct, main = "HCluster")
 
 
 ################################### ***** help.csv ***** ###################################
-# 5
-help.clase = function(numero){
-  # Selecting 3 clusters
-  if(numero < -2.0)
-    return(1)
-  else if(numero < 0.0)
-    return(2)
-  else if(numero < 3.0)
-    return(3)
-  else if(numero < 7.0)
-    return(4)
-  else
-    return(5)
-} 
-
 # 3 MAS PROBABLE
 help.clase = function(numero){
   # Selecting 3 clusters
   if(numero < -1.0)
     return(1)
-  else if(numero < 2.0)
+  else if(numero < 7.0)
     return(2)
   else
     return(3)
@@ -760,6 +661,7 @@ help.clase = function(numero){
 
 ## Exploratory Analysis
 help <- read.csv("help.csv")
+summary(help)
 names(help)[1] <- "x"
 names(help)[2] <- "y"
 names(help)[3] <- "z"
@@ -768,14 +670,8 @@ names(help)[4] <- "class"
 for (i in 1:length(help$class)){
   help$class[i] <- help.clase(help$class[i])
 }
-#dim(help)
-#names(s)
-#str(s)
-#summary(help)
-c.jambu(help)
-plot3d(help$x, help$y, help$z)
 
-plot3d(help$x, help$y, help$z, col = 1:3)
+plot3d(help$x, help$y, help$z, col = help$class)
 
 
 
@@ -786,11 +682,8 @@ help.kmeans.accuracy <- sum(diag(help.kmeans.CM))/sum(help.kmeans.CM)
 
 
 ### ***** plot kmeans 
-rgl.open()
-rgl.bg(color = "white") # Setup the background color
 plot3d(help$x, help$y, help$z, col = help.kmeans$cluster, main = "K-means")
-rgl.spheres(help.kmeans$centers[, c("x", "y", "z")], r = 0.4, color = 1:3) 
-rgl.close()
+rgl.spheres(help.kmeans$centers[, c("x", "y", "z")], r = 0.8, color = 1:3) 
 ###
 
 
@@ -801,11 +694,8 @@ help.pam.CM <- table(help.pam$clustering, help$class)
 help.pam.accuracy.CM <- sum(diag(help.pam.CM))/sum(help.pam.CM)
 
 ### ***** plot PAM
-rgl.open()
-rgl.bg(color = "white") # Setup the background color
 plot3d(help$x, help$y, help$z, col = help.pam$clustering, main = "PAM")
-rgl.spheres(help.pam$medoids[, c("x", "y", "z")], r = 0.2, color = 1:3) 
-rgl.close()
+rgl.spheres(help.pam$medoids[, c("x", "y", "z")], r = 0.8, color = 1:3) 
 ###
 
 
@@ -830,12 +720,7 @@ help.ct <- cutree(help.cluster, k =3) # k to generate 3 clusters
 help.dendrogram <- as.dendrogram(help.cluster)
 plot(help.dendrogram) # dendrogram
 rect.hclust(help.cluster, k = 3, border = c("red"))
-corte <- cut(help.dendrogram, h=18.5)$upper # $upper to get useful information instead a forest
-plot(corte)
-rgl.open()
-rgl.bg(color = "white") # Setup the background color
 plot3d(help$x, help$y, help$z, col = help.ct, main = "HCluster")
-rgl.close()
 ######
 
 
