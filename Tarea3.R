@@ -573,16 +573,14 @@ if (s.hclust[3] > s.kmeans.vs.pam[2]){
 
 ## Exploratory Analysis
 guess <- read.csv("guess.csv")
-c.jambu(guess)
-dim(a)
-# names(a)
-# str(guess)
 summary(guess)
-# hist(a$x)
 names(guess)[1] <- "x"
 names(guess)[2] <- "y"
+plot(guess$x, guess$y) 
 
-# plot(guess$x, guess$y) 
+
+c.jambu(guess)
+
 
 ## K means
 
@@ -610,36 +608,71 @@ points(guess.pam$medoids,
 ###
 
 
-# Medioids are part of the DataSet, centroids aren't necessarily
-
 ## Hcluster
 guess.num <- guess # a copy of the dataframe
 guess.num <- as.matrix(guess.num) # convert into a matrix
 
-# Calculating best hclust method 
-
-
-###############################################################################
-c("ward.D", "single", "complete", "average", "mcquitty", "median", "centroid", "ward.D2")
-c("euclidean", "maximum", "manhattan", "minkowski")
-
-
-
+# Calculating hclust methods
+######### Euclidean - Single (Worst)
 guess.dist.mat <- dist(guess.num, method = dist_methods[1]) # distance matrix
-guess.cluster <- hclust(guess.dist.mat, method = hclust_methods[1]) # apply method
+guess.cluster <- hclust(guess.dist.mat, method = hclust_methods[2]) # apply method
 guess.ct <- cutree(guess.cluster, k = 5) # to generate k clusters
 
-
-
-
-#### ****** plot HCLUST
 dendrogram <- as.dendrogram(guess.cluster)
 plot(dendrogram)
 rect.hclust(guess.cluster, k = 5, border = c("red"))
-corte <- cut(dendrogram, h=5000)$upper # $upper to get useful information instead a forest
-plot(corte)
+plot(guess$x, guess$y, col= guess.ct, main = "HCluster (Euclidean - Single)")
 
-plot(guess$x, guess$y, col= guess.ct, main = "HCluster")
+########## Euclidean - Complete (good enought)
+guess.dist.mat <- dist(guess.num, method = dist_methods[1]) # distance matrix
+guess.cluster <- hclust(guess.dist.mat, method = hclust_methods[3]) # apply method
+guess.ct <- cutree(guess.cluster, k = 5) # to generate k clusters
+
+dendrogram <- as.dendrogram(guess.cluster)
+plot(dendrogram)
+rect.hclust(guess.cluster, k = 5, border = c("red"))
+plot(guess$x, guess$y, col= guess.ct, main = "HCluster (Euclidean - Complete)")
+
+############ Euclidean - Average (so so bad)
+guess.dist.mat <- dist(guess.num, method = dist_methods[1]) # distance matrix
+guess.cluster <- hclust(guess.dist.mat, method = hclust_methods[4]) # apply method
+guess.ct <- cutree(guess.cluster, k = 5) # to generate k clusters
+
+dendrogram <- as.dendrogram(guess.cluster)
+plot(dendrogram)
+rect.hclust(guess.cluster, k = 5, border = c("red"))
+plot(guess$x, guess$y, col= guess.ct, main = "HCluster (Euclidean - Average)")
+
+############# Manhattan - Single (BAD)
+guess.dist.mat <- dist(guess.num, method = dist_methods[3]) # distance matrix
+guess.cluster <- hclust(guess.dist.mat, method = hclust_methods[2]) # apply method
+guess.ct <- cutree(guess.cluster, k = 5) # to generate k clusters
+
+dendrogram <- as.dendrogram(guess.cluster)
+plot(dendrogram)
+rect.hclust(guess.cluster, k = 5, border = c("red"))
+plot(guess$x, guess$y, col= guess.ct, main = "HCluster (Manhattan - Single)")
+
+
+############ Manhattan - Complete
+guess.dist.mat <- dist(guess.num, method = dist_methods[3]) # distance matrix
+guess.cluster <- hclust(guess.dist.mat, method = hclust_methods[3]) # apply method
+guess.ct <- cutree(guess.cluster, k = 5) # to generate k clusters
+
+dendrogram <- as.dendrogram(guess.cluster)
+plot(dendrogram)
+rect.hclust(guess.cluster, k = 5, border = c("red"))
+plot(guess$x, guess$y, col= guess.ct, main = "HCluster (Manhattan - Complete)")
+
+########### Manhattan - Average (so so BAD)
+guess.dist.mat <- dist(guess.num, method = dist_methods[3]) # distance matrix
+guess.cluster <- hclust(guess.dist.mat, method = hclust_methods[4]) # apply method
+guess.ct <- cutree(guess.cluster, k = 5) # to generate k clusters
+
+dendrogram <- as.dendrogram(guess.cluster)
+plot(dendrogram)
+rect.hclust(guess.cluster, k = 5, border = c("red"))
+plot(guess$x, guess$y, col= guess.ct, main = "HCluster (Manhattan - Average)")
 
 
 ################################### END guess.csv ##############################################
