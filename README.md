@@ -18,4 +18,4 @@ Se realizaron aparte los analisis de los archivos __h__, __s__, y __help__ por p
 Sin embargo siguen estando en el informe principal (__tarea3.rmd__)pero no se garantiza la rapida ejecucion de los mismos.
 
 
-El desarrollo del proyecto fue realizado siguiendo la mayoría de las configuraciones sugeridas en el enunciado a través del enlace de [Google Style Guide de R](https://google.github.io/styleguide/Rguide.xml)
+El desarrollo del proyecto fue realizado siguiendo la mayoría de las configuraciones sugeridas a través del enlace de [Google Style Guide de R](https://google.github.io/styleguide/Rguide.xml)
