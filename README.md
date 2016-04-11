@@ -1,15 +1,8 @@
-# Aprendizaje No Supervisado
+# Minería de Datos
+## Aprendizaje No Supervisado
 ## Tarea #3
 
 ## David Padrino
-
-# Tasks
-## chequear fotos porque no se imprimen
-## OJO con h, s y guess .csv, seleccionar buen numero de cluster (guess: 2,4 o 5) revisar hclust en s.csv
-## Imprimir todo en todo
-## Implementar kmedias para a_big
-## freeze R
-## teoria de kmeans, hcust para explicar, hacer una introduccion y explicaciones decentes
 
 
 Se utilizó el SO Ubuntu 14.04.
@@ -17,29 +10,12 @@ Para el paquete Rcmdr puede dar cierto error con un elemento X11, para ello se r
 
 sudo apt-get build-dep r-cran-rgl
 
+## Para Kmedias personalizado
+La implementación de __Kmedias__ para __a.big.csv__ se realizó de acuerdo al sitio web [WikiBooks](https://en.wikibooks.org/wiki/Data_Mining_Algorithms_In_R/Clustering/K-Means) donde se explica el funcionamiento del algoritmo en detalle y [Wikipedia](https://es.wikipedia.org/wiki/K-means).
+
+## NOTAS
+Se realizaron aparte los analisis de los archivos __h__, __s__, y __help__ por problemas en la renderizacion de los graficos en 3D.
+Sin embargo siguen estando en el informe principal (__tarea3.rmd__)pero no se garantiza la rapida ejecucion de los mismos.
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+El desarrollo del proyecto fue realizado siguiendo la mayoría de las configuraciones sugeridas en el enunciado a través del enlace de [Google Style Guide de R](https://google.github.io/styleguide/Rguide.xml)

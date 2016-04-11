@@ -27,16 +27,6 @@ library("rglwidget")
 knit_hooks$set(webgl = hook_webgl)
 ```
 
-## 2 - Se procede a crear 2 arreglos con los metodos necesarios para realizar el clustering jerárquico. 
-Se aclara que **para todos los metodos donde se usó clustering jerárquico se utilizó una función personalizada que selecciona la mejor combinación de los métodos tanto de distancia como de clustering expuestos en los arreglos debajo de este párrafo, basado en la tasa de aciertos de su matriz de confusión**
-
-
-
-
-```{r}
-hclust_methods <- c("ward.D", "single", "complete", "average", "mcquitty", "median", "centroid", "ward.D2")
-dist_methods <- c("euclidean", "maximum", "manhattan", "minkowski")
-```
 
 ## 3 - Se crearon funciones personalizadas
 Algunas de ellas son la implementación del codo de jambú, calculo de kmedias para 2D y 3D, comparación de Kmedias y PAM a través de sus matries de confusión, etc.
@@ -104,6 +94,22 @@ compare.kmeans.pam = function(kmeans.acc, pam.acc){
   }
 }
 
+# Calculating best K for good_luck.csv
+good_luck.kmeans.fun <- function(array, good_luck){
+  better.kmeans <- 0
+  for (i in 2:length(array)){
+    good_luck.kmeans <- kmeans(good_luck[,array], centers = i)
+    good_luck.kmeans.CM <- table(good_luck.kmeans$cluster, good_luck$class)
+    good_luck.kmeans.accuracy <- sum(diag(good_luck.kmeans.CM))/sum(good_luck.kmeans.CM)
+    if (good_luck.kmeans.accuracy > better.kmeans){
+      better.kmeans <- good_luck.kmeans.accuracy
+      fin <- c(better.kmeans, i)
+    }
+  }
+  return(fin)
+}
+
+
 # Calculating each distance method vs each hclust method 
 match.hclust = function(matrix, k, dataset){
   better.accuracy <- 0
@@ -122,268 +128,161 @@ match.hclust = function(matrix, k, dataset){
   }
   return(better)
 }
+
+
+euc.distance <- function(x1, y1, x2, y2){
+  return( sqrt( ( (x1 - x2) ^ 2) + ( (y1 - y2) ^ 2) ) )
+} 
+
+do.distance.matrix <- function(dataframe, dist.matrix, cent){
+  for (i in 1:nrow(cent))
+    dist.matrix[,i] <- euc.distance(cent[i,1], cent[i,2], dataframe[,1], dataframe[,2])
+  return(dist.matrix)
+}
+
+myKmeans <- function(dataframe, k, nItter, centroids = NULL){
+  if(is.null(centroids)){
+    rand.centroids <- dataframe[sample(nrow(dataframe), k), ][-3]  
+    centroids <- matrix(0, nrow=k, ncol=2)
+    centroids[,1] <- rand.centroids[,1]
+    centroids[,2] <- rand.centroids[,2]
+  }
+  cluster <- vector(mode="list", length = nItter)
+  center <- vector(mode="list", length = nItter)
+  clusters <- vector(mode = "numeric", length = nrow(dataframe) )
+  distsToCenters <- matrix(0, nrow = nrow(dataframe), ncol = nrow(centroids))
+  n.clust <- vector("numeric", 3)
+  n.clust.aux <- vector("numeric", 3)
+  for(i in 1:nItter) {
+    distsToCenters <- do.distance.matrix(dataframe, distsToCenters,centroids) # distance matrix
+    clusters <- apply(distsToCenters, 1, which.min) # clusterize
+    centroids <- apply(dataframe, 2, tapply, clusters, mean)
+    if (i>1){
+      for(j in 1:length(n.clust)){
+        n.clust.aux[j] <- length(clusters[clusters == j])
+      }
+      if((n.clust[1] == n.clust.aux[1]) && (n.clust[2] == n.clust.aux[2]) && (n.clust[3] == n.clust.aux[3])){ # if there are no changes, return list
+        cluster <- clusters
+        center <- centroids
+        return(list(centroids = center, clusters = cluster))
+      }else{
+        n.clust[1] = n.clust.aux[1]
+        n.clust[2] = n.clust.aux[2]
+        n.clust[3] = n.clust.aux[3]
+      }
+    }
+  }
+}
 ```
+
+
 ## **Comienzo de Actividades**
 
-## Archivo *h.csv*
+## **Archivo *a_big.csv* **
 
 ```{r}
 ## Exploratory Analysis
-guess <- read.csv("guess.csv")
-summary(guess)
-
+a_big <- read.csv("a_big.csv")
+summary(a_big)
 ```
 
-Este conjunto de datos tiene la particularidad que no posee columna de clase, de tal manera que no se podrán hacer matrices de confusión para evaluar y comparar modelos. 
-Un análisis exploratorio detallado de su _summary_ y de su gráfico será en este escenario la única forma de evaluación de los modelos a aplicar.
-
+Este es el último de los datasets que tiene su última columna con números enteros, los cuales pueden ser utilizados como clase de los grupos.
+Se utiliza la función _set class_ previamente creada para establecer los valores de la ultima columa (entre 0 y 2) entre 1 y 3.
 El gráfico de los cluster se muestra a continuación.
 
 ```{r}
-names(guess)[1] <- "x"
-names(guess)[2] <- "y"
-plot(guess$x, guess$y, main = "Vista Previa")
-
+names(a_big)[1] <- "x"
+names(a_big)[2] <- "y"
+names(a_big)[3] <- "class"
+a_big <- set_class(a_big)
+plot(a_big$x, a_big$y, col=a_big$class, main = "Vista Previa") 
 ```
 
+Se puede observar la presencia de tres clusters bien definidos, por lo que se utilizará __K=3__ para la realización de los algoritmos.
 
-Se pueden ver a simple vista al menos dos clusters bien separados, uno en la parte inferior izquierda y otro en la parte superior derecha, pero también puede apreciarse que el cluster más grande podría sub-dividirse en algunos mas.
+__Observación__
+En la Introducción de este trabajo se realizó la presentación de un marco teórico que hace referencia a los elementos  y herramientas usadas en esta tarea. En ella se mencionó los pro y contra del algoritmo Hclust, el cual calcula una matriz de confusión para realizar su tarea. En este caso no se puede utililizar este algoritmo con el dataset completo.
 
-Para este caso se utilizará un método llamado **"Codo de Jambú"** o **"Método de Jambú"** el cual nos permite ver cuántos clusters pueden ser seleccionados a través de una gráfica producida por la minimización de la suma sucesiva de los errores estándar de las iteraciones de __k__ centroides. Nótese que al mencionar _centroide_ se hace referencia al uso del algoritmo de __K-medias__ como ayuda para la realización de los cálculos.
+Se procede a probar su funcionamiento con Kmedias
 
-La seleccion de los cluster básicamente se hace cuando la gráfica llegue a cierto punto lo suficientemente bajo y que suavice la curva descendiente, lo cual indica que se ha seleccionado la iteración con menor error.
-
-
-A continuación se procede a graficar la curva producida por el **Método de Jambú** para el dataset __guess.csv__.
-
-```{r}
-c.jambu(guess)
-
-```
-
-En la gráfica puede apreciarque la curva empieza a suavizarse y variar de manera de forma mínima, cuando el eje con el nombre **Number of Clusters** esta aproximadamente entre 5 y 6. Se ha decidido tomar el número 5, ya que es el que visualmente se parece mas a la cantidad de clusters existentes en la gráfica.
-
-A continuación se Utilizarán Kmedias, PAM y 6 variaciones de Hclust entre las distancias _Euclidean_ y _Manhattan_ con los métodos de Hcluster más conocidos _Single_, _Complete_ y _Average_. Todos ellos con K = 5, que fue el número seleccionado a través del **Método de Jambú**.
 
 ### K-medias
 ```{r, echo=F}
 ## K means
-guess.kmeans <- kmeans(guess[,c("x", "y")], centers = 5)
+a_big.kmeans <- k.means2D(dataset = a_big, centers = 3)
+a_big.kmeans.CM <- table(a_big.kmeans$cluster, a_big$class)
+a_big.kmeans.accuracy <- sum(diag(a_big.kmeans.CM))/sum(a_big.kmeans.CM)
 
-plot(guess$x, guess$y, col= guess.kmeans$cluster, main = "K-means")
-points(guess.kmeans$centers[, c("x", "y")],
-       col=1:5,
+plot(a_big$x, a_big$y, col= a_big.kmeans$cluster, main = "K-means")
+points(a_big.kmeans$centers[, c("x", "y")],
+       col=0,
        pch = 19,
-       cex = 3)
-
+       cex = 2)
 ```
 
-Con Kmedias se hace una buena división de los 5 clusters que pudieran observarse si se presta atención al cluster inicial. Se observa una buena ubicación de los centroides y un mínimo nivel de solapamiento entre algunos elementos del conjunto.
+
+Para K-medias se observa un desempeño excelente clasificando de manera casi ideal cada punto alrededor de su centroide. Además la tasa de acierto de su matriz de confusión confirma lo bien que se adapta este algoritmo al modelo, específicamente: 
+
+```{r, echo=F,} 
+a_big.kmeans.accuracy
+```
+
+Se puede observar que al momento de aplicar Kmedias aparece en el nombre de la variable __a_big.kmeans__ (la utilizada para almacenar el resultado de la aplicación de kmedias) el nombre __Large Kmeans__junto con un tamaño en Megabytes, lo que indica que se está trabajando con un dataset de gran tamaño para __R__.
 
 
-### Partitioning Around Medioids (PAM)
+Se procederá a realizar una implementación del algoritmo de Kmedias de forma de obtener unos buenos centroides con una muestra aceptable del  dataset. Una vez se tengan los centroides (calculados con un _sample_ del total) se probará el funcionamiento de los mismos en la muestra total.
+
+Para realizar una repartición equitativa se calcula la probabilidad de cada elemento para ser seleccionado dependiendo de la clase a la que pertenezca. Hecho esto se agrega en una posicion de un vector que se utilizará en la funcion __sample__ cuando se realice la selección de elementos aleatoria como muestra. La cual será el 10% de la muestra, es decir, aproximadamente 3000 elementos.
+
+```{r, echo= F}
+prob_vec = vector(mode = "numeric", length = nrow(a_big))
+prob_vec[a_big[,"class"] == 1] = 1/sum(a_big[, "class"] == 1)
+prob_vec[a_big[,"class"] == 2] = 1/sum(a_big[, "class"] == 2)
+prob_vec[a_big[,"class"] == 3] = 1/sum(a_big[, "class"] == 3)
+
+a_big.sample = sample(x = nrow(a_big)
+                      , size = floor(nrow(a_big) * 0.15)
+                      , prob = prob_vec
+                      , replace = F)
+a_big.subset <- a_big[a_big.sample, ]
+a_big.subset.kmeans <- myKmeans(a_big.subset, k = 3, nItter = 10)
+```
+
+
+La visualización de la muestra con los centroides y clusters calculados sería de la siguiente forma:
+
+
 ```{r}
-### Partitioning Around Medioids (PAM)
-guess.pam <- pam(guess[,1:2], 5)
-
-plot(guess$x, guess$y, col = guess.pam$clustering, main = "PAM")
-points(guess.pam$medoids,
-       col=1:5,
-       pch = 18,
-       cex = 3)
-
+plot(a_big.subset$x, a_big.subset$y, col = a_big.subset.kmeans$clusters, main = " Kmedias Personalizado ")
+points(a_big.subset.kmeans$centroids[,c("x", "y")],
+       col = 0,
+       pch = 19,
+       cex = 2)
 ```
 
-Para PAM se observa que las clases se distribuyen muy parecido a Kmedias. Se observa un poco menos de solapamiento que en Kmedias. 
+Una vez realizado esto, se procede a probar en el dataset completo los nuevos centroides y clusters.
 
-### Clustering Jerárquico
-```{r, echo=F}
-## Hcluster
-guess.num <- guess # a copy of the dataframe
-guess.num <- as.matrix(guess.num) # convert into a matrix
+```{r}
+a_big.final = myKmeans(dataframe = a_big, k = 3, nItter = 10, centroids = a_big.subset.kmeans$centroids)
+a_big.final.CM <- table(a_big.final$cluster, a_big$class)
+a_big.final.kmeans.accuracy <- sum(diag(a_big.final.CM))/sum(a_big.final.CM)
+
+plot(a_big$x, a_big$y, col = a_big.final$clusters, main = " Kmedias Personalizado FINAL")
+points(a_big.final$centroids[,c("x", "y")],
+       col = 0,
+       pch = 19,
+       cex = 2)
 ```
 
-Se procede a realizar las combinaciones previamente descritas en el algoritmo de clustering Jerárquico.
+Se puede observar que los centroides (de blanco para poder diferenciar) fueron colocados de una buena manera a vista superficial por lo que se puede decir que el algoritmo tuvo un buen desempeño.
 
-#### Euclidean - Single 
-```{r, echo=F}
-# Calculating hclust methods
-######### Euclidean - Single 
-guess.dist.mat <- dist(guess.num, method = dist_methods[1]) # distance matrix
-guess.cluster <- hclust(guess.dist.mat, method = hclust_methods[2]) # apply method
-guess.ct <- cutree(guess.cluster, k = 5) # to generate k clusters
+Además de lo anterior dicho los tiempos de respuestas fueron mucho menores que al momento de hacer kmedias directamente con todo el set de datos lo que supone que una buena estrategia para tratar los grandes sets de datos es eligiendo una muestra aceptable para obtener clusters y centroides y luego con ellos obtenidos hacer el cálculo con todo el dataset.
 
-dendrogram <- as.dendrogram(guess.cluster)
-plot(dendrogram)
-rect.hclust(guess.cluster, k = 5, border = c("red"))
-plot(guess$x, guess$y, col= guess.ct, main = "HCluster (Euclidean - Single)")
+
+Su tasa de aciertos quizas no es la mejor, esto debido a que quizas con el _samplig_ se haya perdido algo de información
+```{r}
+a_big.final.kmeans.accuracy
 ```
-
-Los dendrogramas usando single usualmente tienen forma escalonada, en este caso no nos brinda información útil de la separación de los 5 clusters. En el gráfico de dispersión se puede observar que solo clusterizó en aproximadamente el 99% todo en un solo grupo, dejando a puntos individuales pertenecer a clusters enteros. Mal método.
-
-
-#### Euclidean - Complete
-```{r, echo=F}
-########## Euclidean - Complete (good enought)
-guess.dist.mat <- dist(guess.num, method = dist_methods[1]) # distance matrix
-guess.cluster <- hclust(guess.dist.mat, method = hclust_methods[3]) # apply method
-guess.ct <- cutree(guess.cluster, k = 5) # to generate k clusters
-
-dendrogram <- as.dendrogram(guess.cluster)
-plot(dendrogram)
-rect.hclust(guess.cluster, k = 5, border = c("red"))
-plot(guess$x, guess$y, col= guess.ct, main = "HCluster (Euclidean - Complete)")
-```
-
-
-
-#### Euclidean - Average 
-```{r, echo=F}
-############ Euclidean - Average (so so bad)
-guess.dist.mat <- dist(guess.num, method = dist_methods[1]) # distance matrix
-guess.cluster <- hclust(guess.dist.mat, method = hclust_methods[4]) # apply method
-guess.ct <- cutree(guess.cluster, k = 5) # to generate k clusters
-
-dendrogram <- as.dendrogram(guess.cluster)
-plot(dendrogram)
-rect.hclust(guess.cluster, k = 5, border = c("red"))
-plot(guess$x, guess$y, col= guess.ct, main = "HCluster (Euclidean - Average)")
-```
-
-
-#### Euclidean - Single 
-```{r, echo=F}
-############# Manhattan - Single (BAD)
-guess.dist.mat <- dist(guess.num, method = dist_methods[3]) # distance matrix
-guess.cluster <- hclust(guess.dist.mat, method = hclust_methods[2]) # apply method
-guess.ct <- cutree(guess.cluster, k = 5) # to generate k clusters
-
-dendrogram <- as.dendrogram(guess.cluster)
-plot(dendrogram)
-rect.hclust(guess.cluster, k = 5, border = c("red"))
-plot(guess$x, guess$y, col= guess.ct, main = "HCluster (Manhattan - Single)")
-```
-
-
-#### Euclidean - Single 
-```{r, echo=F}
-############ Manhattan - Complete
-guess.dist.mat <- dist(guess.num, method = dist_methods[3]) # distance matrix
-guess.cluster <- hclust(guess.dist.mat, method = hclust_methods[3]) # apply method
-guess.ct <- cutree(guess.cluster, k = 5) # to generate k clusters
-
-dendrogram <- as.dendrogram(guess.cluster)
-plot(dendrogram)
-rect.hclust(guess.cluster, k = 5, border = c("red"))
-plot(guess$x, guess$y, col= guess.ct, main = "HCluster (Manhattan - Complete)")
-```
-
-
-#### Euclidean - Single 
-```{r, echo=F}
-########### Manhattan - Average (so so BAD)
-guess.dist.mat <- dist(guess.num, method = dist_methods[3]) # distance matrix
-guess.cluster <- hclust(guess.dist.mat, method = hclust_methods[4]) # apply method
-guess.ct <- cutree(guess.cluster, k = 5) # to generate k clusters
-
-dendrogram <- as.dendrogram(guess.cluster)
-plot(dendrogram)
-rect.hclust(guess.cluster, k = 5, border = c("red"))
-plot(guess$x, guess$y, col= guess.ct, main = "HCluster (Manhattan - Average)")
-```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
